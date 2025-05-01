@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestión de Tareas</title>
+</head>
+<body>
+  <header>
+    <h1>Gestión de Tareas</h1>
+  </header>
+
+  <div id="taskForm">
+    <input type="text" id="title" placeholder="Título" required>
+    <input type="text" id="description" placeholder="Descripción">
+    <button type="submit" id="createTaskBtn">Crear</button>
+  </div>
+
+  <h2>Lista de Tareas</h2>
+  <ul id="taskList"></ul>
+
+  <script>
+    let editTaskId = null;  // Variable para saber qué tarea estamos editando
+
+    // Función para obtener las tareas desde la API
+    async function fetchTasks() {
+      const res = await fetch('/tasks');
+      const tasks = await res.json();
+      const list = document.getElementById('taskList');
+      list.innerHTML = '';  // Limpiamos la lista antes de agregar nuevas tareas
+
+      tasks.forEach(task => {
+        const li = document.createElement('li');
+        li.innerHTML = `
+          <div>
+            <strong>${task.title}</strong>
+            <p>Descripción: ${task.description || 'Sin descripción'}</p>
+            <p>Completada: ${task.completed ? 'Sí' : 'No'}</p>
+            <p>ID: ${task.id}</p>
+            <p>Creada el: ${new Date(task.createdAt).toLocaleString()}</p>
+          </div>
+          <button class="delete-btn" onclick="deleteTask(${task.id})">Eliminar</button>
+          <button class="edit-btn" onclick="editTask(${task.id}, '${task.title}', '${task.description}')">Editar</button>
+          <button class="complete-btn" onclick="toggleCompletion(${task.id}, ${task.completed})">${task.completed ? 'No completado' : 'Completada'}</button>
+        `;
+        list.appendChild(li);
+      });
+    }
+
+    // Función para eliminar una tarea
+    async function deleteTask(id) {
+      const res = await fetch(`/tasks/${id}`, {
+        method: 'DELETE',
+      });
+      if (res.ok) {
+        fetchTasks();  // Refrescamos la lista de tareas después de eliminarla
+      } else {
+        alert('Error al eliminar la tarea');
+      }
+    }
+
+    // Función para editar una tarea
+    function editTask(id, title, description) {
+      editTaskId = id;  // Guardamos el ID de la tarea que estamos editando
+      document.getElementById('title').value = title;  // Rellenamos el campo con el título
+      document.getElementById('description').value = description;  // Rellenamos el campo con la descripción
+      document.getElementById('createTaskBtn').innerText = 'Actualizar';  // Cambiamos el texto del botón a "Actualizar"
+    }
+
+    // Función para alternar el estado de completada
+    async function toggleCompletion(id, completed) {
+      const res = await fetch(`/tasks/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ completed: !completed })  // Cambiamos el estado a lo contrario
+      });
+      if (res.ok) {
+        fetchTasks();  // Refrescamos la lista de tareas
+      } else {
+        alert('Error al actualizar el estado de la tarea');
+      }
+    }
+
+    // Evento al enviar el formulario para crear o actualizar una tarea
+    document.getElementById('createTaskBtn').addEventListener('click', async (e) => {
+      e.preventDefault();
+      const title = document.getElementById('title').value;
+      const description = document.getElementById('description').value;
+
+      if (!title.trim()) {
+        alert('El título es obligatorio');
+        return;
+      }
+
+      let res;
+      if (editTaskId) {
+        // Si editTaskId tiene un valor, estamos editando una tarea
+        res = await fetch(`/tasks/${editTaskId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, description })
+        });
+      } else {
+        // Si editTaskId es null, estamos creando una nueva tarea
+        res = await fetch('/tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, description })
+        });
+      }
+
+      if (res.ok) {
+        document.getElementById('taskForm').reset();  // Limpiamos el formulario
+        document.getElementById('createTaskBtn').innerText = 'Crear';  // Restauramos el texto del botón
+        editTaskId = null;  // Restablecemos el ID de la tarea editada
+        fetchTasks();  // Refrescamos la lista de tareas
+      } else {
+        alert('Hubo un error');
+      }
+    });
+
+    // Llamamos a fetchTasks para cargar las tareas cuando se abre la página
+    fetchTasks();
+  </script>
+  
+  <style>
+    /* Estilos generales para el cuerpo */
+    body {
+      font-family: 'Arial', sans-serif;
+      background-color: #f4f7fc;
+      margin: 0;
+      padding: 0;
+      color: #333;
+    }
+
+    header {
+      background-color: #4CAF50;
+      color: white;
+      text-align: center;
+      padding: 20px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    header h1 {
+      margin: 0;
+      font-size: 2rem;
+    }
+
+    /* Estilos para el formulario */
+    #taskForm {
+      display: flex;
+      flex-direction: column;
+      max-width: 400px;
+      margin: 30px auto;
+      padding: 20px;
+      background-color: #fff;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      border-radius: 8px;
+    }
+
+    #taskForm input {
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 1rem;
+    }
+
+    button {
+      padding: 10px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background-color 0.3s;
+    }
+
+    button:hover {
+      background-color: #4556a0;
+    }
+
+    button:active {
+      background-color: #3e8e41;
+    }
+
+    /* Estilos para la lista de tareas */
+    h2 {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 1.5rem;
+    }
+
+    ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      max-width: 600px;
+      margin: 20px auto;
+    }
+
+    li {
+      background-color: white;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: transform 0.2s;
+    }
+
+    li:hover {
+      transform: scale(1.02);
+    }
+
+    li p {
+      margin: 5px 0;
+      font-size: 1rem;
+    }
+
+    li button.delete-btn {
+      background-color: #f44336;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background-color 0.3s;
+    }
+
+    li button.delete-btn:hover {
+      background-color: #e53935;
+    }
+
+    li button.delete-btn:active {
+      background-color: #d32f2f;
+    }
+
+    li button.edit-btn {
+      background-color: #ffa500;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background-color 0.3s;
+    }
+
+    li button.edit-btn:hover {
+      background-color: #ff8c00;
+    }
+
+    li button.edit-btn:active {
+      background-color: #e67e00;
+    }
+
+    li button.complete-btn {
+      background-color: #2196F3;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background-color 0.3s;
+    }
+
+    li button.complete-btn:hover {
+      background-color: #1e88e5;
+    }
+
+    li button.complete-btn:active {
+      background-color: #1976d2;
+    }
+  </style>
+
+</body>
+</html>
