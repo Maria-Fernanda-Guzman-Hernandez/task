@@ -121,6 +121,36 @@
 
     // Llamamos a fetchTasks para cargar las tareas cuando se abre la página
     fetchTasks();
+    // Función para buscar tarea por ID (desde el navegador)
+      async function searchTaskById() {
+        const id = document.getElementById('searchTaskId').value.trim();
+        const resultDiv = document.getElementById('searchResultMessage');
+
+        if (!id) {
+          resultDiv.textContent = 'Por favor ingresa un ID válido.';
+          resultDiv.style.color = 'orange';
+          return;
+        }
+
+        try {
+          const res = await fetch(`/tasks/${id}`);
+          if (res.status === 404) {
+            resultDiv.textContent = 'Tarea no encontrada';
+            resultDiv.style.color = 'red';
+          } else {
+            const task = await res.json();
+            resultDiv.innerHTML = `
+              <span style="color: green;">Tarea encontrada:</span><br>
+              <strong>${task.title}</strong> - ${task.description || 'Sin descripción'}
+              <br>Completada: ${task.completed ? 'Sí' : 'No'}
+            `;
+            resultDiv.style.color = 'black';
+          }
+        } catch (error) {
+          resultDiv.textContent = 'Error al buscar la tarea';
+          resultDiv.style.color = 'red';
+        }
+      }
   </script>
   
   <style>
